@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "title": "Home Repair",
+    "slug": "home-repair",
+    "icon": "Home"
+  },
+  {
+    "id": 2,
+    "title": "AC & HVAC",
+    "slug": "ac-hvac",
+    "icon": "Wind"
+  },
+  {
+    "id": 3,
+    "title": "Plumbing",
+    "slug": "plumbing",
+    "icon": "Wrench"
+  },
+  {
+    "id": 4,
+    "title": "Electrical",
+    "slug": "electrical",
+    "icon": "Zap"
+  },
+  {
+    "id": 5,
+    "title": "Roofing & Waterproofing",
+    "slug": "roofing-waterproofing",
+    "icon": "Building2"
+  },
+  {
+    "id": 6,
+    "title": "Painting",
+    "slug": "painting",
+    "icon": "Paintbrush"
+  },
+  {
+    "id": 7,
+    "title": "Carpentry",
+    "slug": "carpentry",
+    "icon": "Hammer"
+  },
+  {
+    "id": 8,
+    "title": "Cleaning",
+    "slug": "cleaning",
+    "icon": "Sparkles"
+  },
+  {
+    "id": 9,
+    "title": "Pest Control",
+    "slug": "pest-control",
+    "icon": "Bug"
+  },
+  {
+    "id": 10,
+    "title": "Gardening & Landscaping",
+    "slug": "gardening-landscaping",
+    "icon": "Trees"
+  },
+  {
+    "id": 11,
+    "title": "Construction & Renovation",
+    "slug": "construction-renovation",
+    "icon": "Ruler"
+  },
+  {
+    "id": 12,
+    "title": "Glass & Aluminum",
+    "slug": "glass-aluminum",
+    "icon": "SquareStack"
+  },
+  {
+    "id": 13,
+    "title": "Locksmith",
+    "slug": "locksmith",
+    "icon": "KeyRound"
+  },
+  {
+    "id": 14,
+    "title": "Internet & CCTV",
+    "slug": "internet-cctv",
+    "icon": "Wifi"
+  },
+  {
+    "id": 15,
+    "title": "Moving & Delivery",
+    "slug": "moving-delivery",
+    "icon": "Truck"
+  },
+  {
+    "id": 16,
+    "title": "Auto Services",
+    "slug": "auto-services",
+    "icon": "Car"
+  },
+  {
+    "id": 17,
+    "title": "Appliance Repair",
+    "slug": "appliance-repair",
+    "icon": "Cog"
+  },
+  {
+    "id": 18,
+    "title": "Water Solutions",
+    "slug": "water-solutions",
+    "icon": "Droplets"
+  },
+  {
+    "id": 19,
+    "title": "Solar Services",
+    "slug": "solar-services",
+    "icon": "Sun"
+  },
+  {
+    "id": 20,
+    "title": "Mobile & Computer Repair",
+    "slug": "mobile-computer-repair",
+    "icon": "Smartphone"
+  }
+]
