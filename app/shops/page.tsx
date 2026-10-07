@@ -2,22 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Phone, MessageCircle, MapPin, Wrench } from "lucide-react";
+import { supabase } from "../lib/supabaseClient";
 
 interface Mechanic {
   id: string;
   name: string;
-  shopName: string;
+  shop_name: string;
   category: string;
-  contactNumber: string;
-  whatsappNumber: string;
+  contact_number: string;
+  whatsapp_number: string;
   city: string;
-  address: string;
-  shopImage: string;
-  ownerImage: string;
-  createdAt: string;
+  address: string | null;
+  shop_image: string;
+  owner_image: string;
+  created_at: string;
 }
-
-const STORAGE_KEY = "kaampro_mechanics";
 
 const cardClass =
   "group overflow-hidden rounded-2xl border border-[#2A2820] " +
@@ -40,15 +39,15 @@ function onlyDigits(value: string) {
 }
 
 function MechanicCard({ mechanic }: { mechanic: Mechanic }) {
-  const callLink = "tel:" + mechanic.contactNumber;
-  const chatLink = "https://wa.me/" + onlyDigits(mechanic.whatsappNumber);
+  const callLink = "tel:" + mechanic.contact_number;
+  const chatLink = "https://wa.me/" + onlyDigits(mechanic.whatsapp_number);
 
   return (
     <div className={cardClass}>
       <div className="relative h-44 overflow-hidden sm:h-56">
         <img
-          src={mechanic.shopImage}
-          alt={mechanic.shopName}
+          src={mechanic.shop_image}
+          alt={mechanic.shop_name}
           className="h-full w-full object-cover"
         />
         <div className="absolute left-3 top-3 rounded-full bg-[#FA7C0E] px-2.5 py-1 text-[10px] font-semibold text-white sm:left-4 sm:top-4 sm:px-3 sm:py-1.5 sm:text-xs">
@@ -59,13 +58,13 @@ function MechanicCard({ mechanic }: { mechanic: Mechanic }) {
       <div className="p-4 sm:p-5">
         <div className="flex items-center gap-3 sm:gap-4">
           <img
-            src={mechanic.ownerImage}
+            src={mechanic.owner_image}
             alt={mechanic.name}
             className="h-11 w-11 rounded-full border-2 border-[#FA7C0E] object-cover sm:h-14 sm:w-14"
           />
           <div className="min-w-0">
             <h3 className="truncate text-base font-bold text-white sm:text-lg">
-              {mechanic.shopName}
+              {mechanic.shop_name}
             </h3>
             <p className="truncate text-xs text-[#9BA295] sm:text-sm">
               {mechanic.name}
@@ -74,7 +73,7 @@ function MechanicCard({ mechanic }: { mechanic: Mechanic }) {
         </div>
 
         <div className="mt-4 flex items-center gap-2 text-xs text-[#9BA295] sm:mt-5 sm:text-sm">
-          <MapPin size={15} className="shrink-0 text-[#FA7C0E] sm:size-[17px]" />
+          <MapPin size={15} className="shrink-0 text-[#FA7C0E]" />
           <span className="truncate">{mechanic.city}</span>
         </div>
 
@@ -107,31 +106,42 @@ function MechanicCard({ mechanic }: { mechanic: Mechanic }) {
 
 export default function ShopsPage() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadMechanics = () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        const data: Mechanic[] = saved ? JSON.parse(saved) : [];
+    let active = true;
 
-        data.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+    const loadMechanics = async () => {
+      const { data, error } = await supabase
+        .from("mechanics")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-        setMechanics(data);
-      } catch (error) {
-        console.error("Mechanic data read error:", error);
+      if (!active) return;
+
+      if (error) {
+        console.error("Mechanics fetch error:", error);
+      } else {
+        setMechanics(data || []);
       }
+      setLoading(false);
     };
 
     loadMechanics();
-    window.addEventListener("kaampro:mechanics-updated", loadMechanics);
-    window.addEventListener("storage", loadMechanics);
+
+    // Naya mechanic register ho to list khud update ho
+    const channel = supabase
+      .channel("mechanics-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mechanics" },
+        () => loadMechanics()
+      )
+      .subscribe();
 
     return () => {
-      window.removeEventListener("kaampro:mechanics-updated", loadMechanics);
-      window.removeEventListener("storage", loadMechanics);
+      active = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -140,7 +150,7 @@ export default function ShopsPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 text-center sm:mb-10">
           <div className="mb-2 flex items-center justify-center gap-2 sm:mb-3">
-            <Wrench size={18} className="text-[#FA7C0E] sm:size-5" />
+            <Wrench size={18} className="text-[#FA7C0E]" />
             <span className="text-xs font-semibold uppercase text-[#FA7C0E] sm:text-sm">
               KaamPro Services
             </span>
@@ -155,9 +165,11 @@ export default function ShopsPage() {
           </p>
         </div>
 
-        {mechanics.length === 0 ? (
+        {loading ? (
+          <p className="text-center text-sm text-[#9BA295]">Loading...</p>
+        ) : mechanics.length === 0 ? (
           <div className="rounded-2xl border border-[#2A2820] bg-[#151410] px-4 py-12 text-center sm:px-6 sm:py-16">
-            <Wrench size={38} className="mx-auto mb-3 text-[#FA7C0E] sm:mb-4 sm:size-[45px]" />
+            <Wrench size={38} className="mx-auto mb-3 text-[#FA7C0E] sm:mb-4" />
             <h3 className="text-lg font-semibold text-white sm:text-xl">
               Abhi koi service provider nahi hai
             </h3>

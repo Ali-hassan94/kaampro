@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Trash2, Lock, ShieldCheck } from "lucide-react";
+import { supabase } from "../lib/supabaseClient";
 
-const STORAGE_KEY = "kaampro_mechanics";
 const SESSION_KEY = "kaampro_admin_unlocked";
 
 // Yahan apna khud ka password rakhen — kisi ko na batayen
@@ -14,22 +14,29 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
-  const [shopCount, setShopCount] = useState(0);
+  const [shopCount, setShopCount] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem(SESSION_KEY) === "true") {
       setUnlocked(true);
     }
-    updateCount();
   }, []);
 
-  const updateCount = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const data = saved ? JSON.parse(saved) : [];
-      setShopCount(data.length);
-    } catch {
+  useEffect(() => {
+    if (unlocked) updateCount();
+  }, [unlocked]);
+
+  const updateCount = async () => {
+    const { count, error: countError } = await supabase
+      .from("mechanics")
+      .select("*", { count: "exact", head: true });
+
+    if (countError) {
+      console.error(countError);
       setShopCount(0);
+    } else {
+      setShopCount(count || 0);
     }
   };
 
@@ -44,11 +51,42 @@ export default function AdminPage() {
     }
   };
 
-  const handleReset = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    window.dispatchEvent(new Event("kaampro:mechanics-updated"));
-    setConfirming(false);
-    updateCount();
+  const handleReset = async () => {
+    setDeleting(true);
+    try {
+      // Pehle sab image files uthayen taake storage se bhi delete ho saken
+      const { data: rows } = await supabase
+        .from("mechanics")
+        .select("shop_image, owner_image");
+
+      const fileNames: string[] = [];
+      (rows || []).forEach((row) => {
+        [row.shop_image, row.owner_image].forEach((url: string) => {
+          const parts = url.split("/shop-images/");
+          if (parts[1]) fileNames.push(parts[1]);
+        });
+      });
+
+      if (fileNames.length > 0) {
+        await supabase.storage.from("shop-images").remove(fileNames);
+      }
+
+      // Sab rows delete karen (id not-null condition sab rows match karti hai)
+      const { error: deleteError } = await supabase
+        .from("mechanics")
+        .delete()
+        .not("id", "is", null);
+
+      if (deleteError) throw deleteError;
+
+      setConfirming(false);
+      updateCount();
+    } catch (err) {
+      console.error(err);
+      alert("Delete karne mein masla hua");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!unlocked) {
@@ -74,9 +112,7 @@ export default function AdminPage() {
             className="w-full rounded-lg border border-[#2A2820] bg-[#0B0A07] px-4 py-3 text-center text-white placeholder-[#9BA295] focus:border-[#FA7C0E] focus:outline-none"
           />
 
-          {error && (
-            <p className="mt-3 text-sm text-red-400">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
           <button
             type="submit"
@@ -96,7 +132,10 @@ export default function AdminPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
         <p className="mt-2 text-[#9BA295]">
-          Abhi <span className="text-white font-semibold">{shopCount}</span>{" "}
+          Abhi{" "}
+          <span className="font-semibold text-white">
+            {shopCount === null ? "..." : shopCount}
+          </span>{" "}
           shops register hain
         </p>
       </div>
@@ -109,12 +148,14 @@ export default function AdminPage() {
           <div className="flex gap-3">
             <button
               onClick={handleReset}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              disabled={deleting}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
             >
-              Haan, Delete Karen
+              {deleting ? "Delete ho raha hai..." : "Haan, Delete Karen"}
             </button>
             <button
               onClick={() => setConfirming(false)}
+              disabled={deleting}
               className="rounded-lg border border-[#2A2820] px-4 py-2 text-sm font-semibold text-white"
             >
               Cancel
@@ -124,7 +165,7 @@ export default function AdminPage() {
       ) : (
         <button
           onClick={() => setConfirming(true)}
-          disabled={shopCount === 0}
+          disabled={!shopCount}
           className="flex items-center gap-2 rounded-xl border border-red-900 px-6 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-950/30 disabled:opacity-40"
         >
           <Trash2 size={16} />

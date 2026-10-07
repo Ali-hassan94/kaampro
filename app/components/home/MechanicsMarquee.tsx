@@ -2,26 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { Wrench, Wind, Zap, Droplets, Paintbrush, Hammer } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 
 interface Mechanic {
   id: string;
   name: string;
-  shopName: string;
+  shop_name: string;
   category: string;
-  shopImage: string;
-  createdAt: string;
+  shop_image: string;
+  created_at: string;
 }
 
-const STORAGE_KEY = "kaampro_mechanics";
-
-// "ltr" = left se right, "rtl" = right se left
 const DIRECTION: "ltr" | "rtl" = "ltr";
-
 const CARD_WIDTH = 280;
 const CARD_HEIGHT = 380;
 const CARD_GAP = 24;
 
-// Jab tak koi shop register na ho, ye placeholder cards dikhte hain
 const PLACEHOLDERS = [
   { icon: Wind, title: "AC & HVAC" },
   { icon: Zap, title: "Electrical" },
@@ -70,13 +66,13 @@ function ShopCard({ mechanic }: { mechanic: Mechanic }) {
       style={{ width: CARD_WIDTH, height: CARD_HEIGHT, marginRight: CARD_GAP }}
     >
       <img
-        src={mechanic.shopImage}
-        alt={mechanic.shopName}
+        src={mechanic.shop_image}
+        alt={mechanic.shop_name}
         className="h-full w-full object-cover"
         draggable={false}
       />
       <div className={overlayClass} />
-      <CaptionBlock title={mechanic.name} subtitle={mechanic.shopName} />
+      <CaptionBlock title={mechanic.name} subtitle={mechanic.shop_name} />
     </div>
   );
 }
@@ -103,33 +99,42 @@ export default function MechanicsMarquee() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
 
   useEffect(() => {
-    const load = () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        const data: Mechanic[] = saved ? JSON.parse(saved) : [];
-        data.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setMechanics(data);
-      } catch (error) {
-        console.error("Marquee data read error:", error);
+    let active = true;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("mechanics")
+        .select("id,name,shop_name,category,shop_image,created_at")
+        .order("created_at", { ascending: false });
+
+      if (!active) return;
+
+      if (error) {
+        console.error("Marquee fetch error:", error);
+      } else {
+        setMechanics(data || []);
       }
     };
 
     load();
-    window.addEventListener("kaampro:mechanics-updated", load);
-    window.addEventListener("storage", load);
+
+    const channel = supabase
+      .channel("mechanics-marquee-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mechanics" },
+        () => load()
+      )
+      .subscribe();
 
     return () => {
-      window.removeEventListener("kaampro:mechanics-updated", load);
-      window.removeEventListener("storage", load);
+      active = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
   const hasShops = mechanics.length > 0;
 
-  // Kam shops hon to repeat kar ke kam az kam 8 cards banayen
   const base: number[] = [];
   const baseCount = hasShops ? mechanics.length : PLACEHOLDERS.length;
   const minCards = 8;
@@ -138,7 +143,6 @@ export default function MechanicsMarquee() {
     for (let i = 0; i < baseCount; i++) base.push(i);
   }
 
-  // Seamless loop ke liye list do baar
   const loopItems = [...base, ...base];
   const duration = Math.max(30, base.length * 6);
   const animationName =
